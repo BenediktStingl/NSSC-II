@@ -1,4 +1,0 @@
-Hallo git!
-Ich bin ein Textfile!
-
-Und bin die aktuellste Version!
