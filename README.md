@@ -1,6 +1,9 @@
 # NSSC-II
 CSE 2021 course
 
-Hello?
+In main all Exercises are collected. For each exercise task a new branch is opened which is, when finished, merged into main again.
 
-Hello!
+Exercise 1: Jacobi MPI Parallelization
+Exercise 2:
+Exercise 3:
+Exercise 4:
