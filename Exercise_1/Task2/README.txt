@@ -1,0 +1,1 @@
+The python script for the plots can be found in the folder 'datacluster_Task2' and was also used for the other tasks.

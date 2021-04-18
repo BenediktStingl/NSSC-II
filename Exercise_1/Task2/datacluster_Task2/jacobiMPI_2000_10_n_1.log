@@ -1,0 +1,10 @@
+
+No. of processors: 1 resolution: 2000 iterations: 10 DIM: 1D
+========================================
+Total   Runtime = 6.58059227e+00 seconds
+Average Runtime = 6.58059227e-01 seconds
+Residual Euclidean Norm = 2.23617819e-04
+Residual Maximum   Norm = 2.30934804e+01
+Totalerror Euclidean Norm = 1.87523793e-02
+Totalerror Maximum   Norm = 2.61512845e+02
+========================================

@@ -9,9 +9,9 @@ void jacobi(Mesh<T>& mesh)
     {
         for(long j = mesh.j; j < mesh.J; j++)
         {
-            double F = 4 * M_PI*M_PI * mesh.h*mesh.h;
-            double RHS = F * sin( 2*M_PI*mesh.coord(i, j, "x") ) * sinh( 2*M_PI*mesh.coord(i, j, "y") );
-            double SUM = (-1)*mesh.getValue(i, j-1) + (-1)*mesh.getValue(i-1, j) + (-1)*mesh.getValue(i, j+1) + (-1)*mesh.getValue(i+1, j);
+            T F = 4 * M_PI*M_PI * mesh.h*mesh.h;
+            T RHS = F * sin( 2*M_PI*mesh.coord(i, j, "x") ) * sinh( 2*M_PI*mesh.coord(i, j, "y") );
+            T SUM = (-1)*mesh.getValue(i, j-1) + (-1)*mesh.getValue(i-1, j) + (-1)*mesh.getValue(i, j+1) + (-1)*mesh.getValue(i+1, j);
             U_k[mesh.index(i, j)] = (RHS - SUM) / (4 + F);
         }
     }
@@ -22,6 +22,7 @@ void jacobi(Mesh<T>& mesh)
 template<typename T>
 std::vector<T> residual(Mesh<T> mesh)
 {
+    /* Calculate R */
     std::vector<T> R(mesh.N*mesh.M, 0.0);
 
     for(long i = mesh.i; i < mesh.I; i++)
@@ -34,14 +35,26 @@ std::vector<T> residual(Mesh<T> mesh)
             R[mesh.index(i, j)] = LHS - RHS;
         }
     }
+
+    /* Transform R */
+    std::vector<T> R_trans(mesh.widthX*mesh.widthY, 0.0);
+
+    for(long i = mesh.i; i < mesh.I; i++)
+    {
+        for(long j = mesh.j; j < mesh.J; j++)
+        {
+            long Index = mesh.widthX*(j-mesh.j) + (i-mesh.i);
+            R_trans[Index] = R[mesh.index(i, j)];
+        }
+    }
     
-    return R;
+    return R_trans;
 }
 
 template<typename T>
-std::vector<double> solution(Mesh<T> mesh)
+std::vector<T> solution(Mesh<T> mesh)
 {
-    std::vector<double> S(mesh.N*mesh.M, 0.0);
+    std::vector<T> S(mesh.N*mesh.M, 0.0);
 
     for(long i = mesh.i; i < mesh.I; i++)
     {
@@ -55,10 +68,11 @@ std::vector<double> solution(Mesh<T> mesh)
 }
 
 template<typename T>
-std::vector<double> totalerror(Mesh<T> mesh)
+std::vector<T> totalerror(Mesh<T> mesh)
 { 
-    std::vector<double> Total(mesh.N*mesh.M, 0.0);
-    std::vector<double> S = solution(mesh);
+    /* Calculate Total */
+    std::vector<T> Total(mesh.N*mesh.M, 0.0);
+    std::vector<T> S = solution(mesh);
 
     for(long i = mesh.i; i < mesh.I; i++)
     {
@@ -68,23 +82,37 @@ std::vector<double> totalerror(Mesh<T> mesh)
         }
     }
 
-    return Total;
+    /* Transform Total */
+    std::vector<T> Total_trans(mesh.widthX*mesh.widthY, 0.0);
+
+    for(long i = mesh.i; i < mesh.I; i++)
+    {
+        for(long j = mesh.j; j < mesh.J; j++)
+        {
+            long Index = mesh.widthX*(j-mesh.j) + (i-mesh.i);
+            Total_trans[Index] = Total[mesh.index(i, j)];
+        }
+    }
+
+    return Total_trans;
 }
 
-double euclidean_norm(std::vector<double> V)
+template<typename T>
+T euclidean_norm(std::vector<T> V)
 {
-    double euclidean = 0;
-    for (double element : V)
+    T euclidean = 0;
+    for (T element : V)
     {
         euclidean += element*element;
     }
-    return sqrt(euclidean) / V.size(); //change size V.Size-Ghosts? ALEX
+    return sqrt(euclidean) / V.size();
 }
 
-double maximum_norm(std::vector<double> V)
+template<typename T>
+T maximum_norm(std::vector<T> V)
 {
-    double maximum = 0;
-    for (double element : V)
+    T maximum = 0;
+    for (T element : V)
     {
         maximum = std::fabs(element) > maximum ? std::fabs(element) : maximum;
     }
