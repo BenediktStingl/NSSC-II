@@ -5,7 +5,7 @@ In main all Exercises are collected. For each exercise task a new branch is open
 
 Exercise 1: Jacobi MPI Parallelization
 
-Exercise 2:
+Exercise 2: Molecular Dynamics
 
 Exercise 3:
 
