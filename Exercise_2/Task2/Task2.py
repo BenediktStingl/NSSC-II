@@ -6,17 +6,29 @@ def LJ(r):
 
 def Epot(param):
     pot = 0.
+    Le = (len(param)//3)/0.8
     for i in range(0,len(param)-1, 3):
         for j in range(i+3,len(param), 3):
-            r = np.sqrt((param[i]-param[j])**2+(param[i+1]-param[j+1])**2+(param[i+2]-param[j+2])**2)
+            dx = param[i]-param[j]
+            dy = param[i+1]-param[j+1]
+            dz = param[i+2]-param[j+2]
+            dx_mi = dx - Le*np.round(dx/Le) #minimum image
+            dy_mi = dy - Le*np.round(dy/Le)
+            dz_mi = dz - Le*np.round(dz/Le)
+            r = np.sqrt(dx_mi**2+dy_mi**2+dz_mi**2)
             pot += LJ(r)
     return pot
 
 def Epot2D(param):
     pot = 0.
+    Le = (len(param)//2)/0.8
     for i in range(0,len(param)-1, 2):
         for j in range(i+2,len(param), 2):
-            r = np.sqrt((param[i]-param[j])**2+(param[i+1]-param[j+1])**2)
+            dx = param[i]-param[j]
+            dy = param[i+1]-param[j+1]
+            dx_mi = dx - Le*np.round(dx/Le) #minimum image
+            dy_mi = dy - Le*np.round(dy/Le)
+            r = np.sqrt(dx_mi**2+dy_mi**2)
             pot += LJ(r)
     return pot
 
@@ -27,7 +39,7 @@ if __name__ == "__main__":
 	import scipy.optimize as optimize
 	import matplotlib.pyplot as plt
 
-	#from jax import grad #uncomment for jax!
+	from jax import grad #uncomment for jax!
 
 	### plot potential function ###
 	"""
@@ -43,7 +55,7 @@ if __name__ == "__main__":
 
 	### input variables ###
 	dims = 3 #2D or 3D
-	M = 2 #number of atoms
+	M = 4 #number of atoms, for 2D not too many since plot is made
 	L = M/0.8 #length of box
 	SIG = 1 #standard deviation
 
@@ -60,18 +72,18 @@ if __name__ == "__main__":
 	if dims == 3:
 		print("potential random state: ", Epot(np.ndarray.flatten(coords)), "\n")
 		result = optimize.minimize(Epot, coords, method="CG")
-		#derivative_fn = grad(Epot)                                  #uncomment for jax!
+		derivative_fn = grad(Epot)                                  #uncomment for jax!
 	elif dims == 2:
 		print("potential random state: ", Epot2D(np.ndarray.flatten(coords)), "\n")
 		result = optimize.minimize(Epot2D, coords, method="CG")
-		#derivative_fn = grad(Epot2D)                                #uncomment for jax!
+		derivative_fn = grad(Epot2D)                                #uncomment for jax!
 	else:
 		print("RECOMMEND OTHER DIMENSIONAL INPUT")
 		
 	### find minimum potential and forces ###
 	print("potential minimum: ", result.fun)
 	print("new positions: ", result.x, "\n")
-	#print("forces: ", derivative_fn(result.x))
+	print("forces: ", derivative_fn(result.x))
 
 	### create random velocities ###
 	SIG_mat = SIG * np.eye(dims)
@@ -107,12 +119,12 @@ if __name__ == "__main__":
 	for k in range(0, len(result.x), dims):
 		if dims == 3:
 		    x, y, z = result.x[k], result.x[k+1], result.x[k+2]
-		    vx, vy, vz = vels[k//dims]  ### check if that works!
-		    filestring += f"{x} {y} {z} {vx} {vy} {vz}\n"
+		    vx, vy, vz = vels[k//dims]
+		    filestring += f"{x:.6f} {y:.6f} {z:.6f} {vx:.6f} {vy:.6f} {vz:.6f}\n"
 		elif dims == 2:
 		    x, y = result.x[k], result.x[k+1]
 		    vx, vy = vels[k//dims]
-		    filestring += f"{x} {y} {vx} {vy}\n"
+		    filestring += f"{x:.6f} {y:.6f} {vx:.6f} {vy:.6f}\n"
 		
 		if k == 0 and dims == 2:
 		    plt.scatter(x, y, color="r", label="minimum state") #label in plot
