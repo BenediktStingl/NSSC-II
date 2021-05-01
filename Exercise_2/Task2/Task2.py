@@ -21,13 +21,32 @@ def readInputArguments(argv):
 		exit()
 
 
-def BC_control(pos, L):
-	if pos > L:
-		return pos - L
-	elif pos < 0:
-		return pos + L
+def BC_control(pos_list, L, M):
+	"""
+	If a particle exits the box it enters on the other side.
+	It differentiates between coordinates given in a 1D array or 
+	coordinates for each particle in its own array entry.
+	"""
+	tmp_pos = []
+
+	if len(np.shape(pos_list)) > 1:
+		for p in pos_list:
+			for pos in p:
+				if pos > L:
+					tmp_pos.append(pos - L)
+				elif pos < 0:
+					tmp_pos.append(pos + L)
+				else:
+					tmp_pos.append(pos)
 	else:
-		return pos
+		for p in pos_list:
+			if p > L:
+				tmp_pos.append(p - L)
+			elif p < 0:
+				tmp_pos.append(p + L)
+			else:
+				tmp_pos.append(p)
+	return np.array(tmp_pos).reshape((M, 3))
 
 
 def generateInitialCoords(M, L, dims):
@@ -40,12 +59,7 @@ def generateInitialCoords(M, L, dims):
 	result = optimize.minimize(Epot, coords, L, method="CG")
 	print("potential minimum: ", result.fun)
 
-	coord_liste = []
-	for k in result.x:
-		coord_liste.append(BC_control(k, L))
-
-	coords = np.array(coord_liste).reshape((M, 3))
-	return coords
+	return BC_control(result.x, L, M)
 
 
 @jax.jit
