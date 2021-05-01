@@ -21,6 +21,34 @@ def readInputArguments(argv):
 		exit()
 
 
+def BC_control(pos_list, L, M):
+	"""
+	If a particle exits the box it enters on the other side.
+	It differentiates between coordinates given in a 1D array or 
+	coordinates for each particle in its own array entry.
+	"""
+	tmp_pos = []
+
+	if len(np.shape(pos_list)) > 1:
+		for p in pos_list:
+			for pos in p:
+				if pos > L:
+					tmp_pos.append(pos - L)
+				elif pos < 0:
+					tmp_pos.append(pos + L)
+				else:
+					tmp_pos.append(pos)
+	else:
+		for p in pos_list:
+			if p > L:
+				tmp_pos.append(p - L)
+			elif p < 0:
+				tmp_pos.append(p + L)
+			else:
+				tmp_pos.append(p)
+	return np.array(tmp_pos).reshape((M, 3))
+
+
 def generateInitialCoords(M, L, dims):
 	# create RNG with seed
 	random.seed(42)
@@ -31,12 +59,12 @@ def generateInitialCoords(M, L, dims):
 	result = optimize.minimize(Epot, coords, L, method="CG")
 	print("potential minimum: ", result.fun)
 
-	coords = np.array(result.x).reshape((M, 3))
-	return coords
+	return BC_control(result.x, L, M)
 
 
 @jax.jit
 def Epot(coords, L):
+
 	def minimumImage(delta, L):
 		return delta - L * np.round(delta / L)
 
