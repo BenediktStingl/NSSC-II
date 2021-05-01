@@ -21,6 +21,15 @@ def readInputArguments(argv):
 		exit()
 
 
+def BC_control(pos, L):
+	if pos > L:
+		return pos - L
+	elif pos < 0:
+		return pos + L
+	else:
+		return pos
+
+
 def generateInitialCoords(M, L, dims):
 	# create RNG with seed
 	random.seed(42)
@@ -31,17 +40,11 @@ def generateInitialCoords(M, L, dims):
 	result = optimize.minimize(Epot, coords, L, method="CG")
 	print("potential minimum: ", result.fun)
 
-	#coord_liste = []
-	#for k in result.x:
-		#print("k_before: ", k)
-		#coord_liste.append(BC_control(k, L))
-		#print("k_after: ", k)
-	#print("coord_neu: ", coord_liste)
+	coord_liste = []
+	for k in result.x:
+		coord_liste.append(BC_control(k, L))
 
-	#result = optimize.minimize(Epot, coord_liste, L, method="CG")
-	#print("potential minimum: ", result.fun)
-
-	coords = np.array(result.x).reshape((M, 3))
+	coords = np.array(coord_liste).reshape((M, 3))
 	return coords
 
 
@@ -62,13 +65,6 @@ def Epot(coords, L):
 			E_pot += 4*( ( (2**(-1/6))/r )**12 - ( (2**(-1/6))/r )**6 )
 	return E_pot
 
-def BC_control(pos, L):
-	if pos > L:
-		return pos - L
-	elif pos < 0:
-		return pos + L
-	else:
-		return pos
 
 def calculateInitialForces(M, L, coords):
 	gradient = jax.jit(jax.grad(Epot))
