@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import Task2
+from Task2 import BC_control
 
 import sys
 import numpy # necessary for updates
@@ -37,25 +38,22 @@ def readFile(path):
     return M, C, L, np.array(coords), np.array(vels)
 
 
+
 def calculateNewCoords(coords, vels, forces, M, L, delta_t):
     newCoords = numpy.full_like(coords, 0.0) # numpy array allows updates
-    for i in range(0, coords.shape[0]):
-        for j in [0, 1, 2]:
-            newCoords[i][j] = coords[i][j] + \
-                              vels[i][j] * delta_t + \
-                              0.5 * forces[i][j] * (delta_t)**2
-    return newCoords
+    newCoords[:][:] = coords[:][:] + \
+                      vels[:][:] * delta_t + \
+                      0.5 * forces[:][:] * (delta_t)**2
+    return BC_control(newCoords, L, M)
+
 
 
 def calculateNewVels(coords, vels, forces, M, L, delta_t):
     newForces = Task2.calculateInitialForces(M, L, coords)
     newVels = numpy.full_like(vels, 0.0) # numpy array allows updates
-    for i in range(0, vels.shape[0]):
-        for j in [0, 1, 2]:
-            newVels[i][j] = vels[i][j] + \
-                            0.5 * (forces[i][j] + newForces[i][j]) * delta_t
+    newVels[:][:] = vels[:][:] + \
+                    0.5 * (forces[:][:] + newForces[:][:]) * delta_t
     return newVels, newForces
-
 
 def VerletAlgorithm(coords, vels, forces, M, delta_t, N):
     filestring = Task2.createFilestring(M, L, coords, vels, "Time step 0")
@@ -63,14 +61,20 @@ def VerletAlgorithm(coords, vels, forces, M, delta_t, N):
         coords = calculateNewCoords(coords, vels, forces, M, L, delta_t)
         vels, forces = calculateNewVels(coords, vels, forces, M, L, delta_t)
         filestring += Task2.createFilestring(M, L, coords, vels, f"Time step {k}")
+        print(f"finished timestep {k}")
 
-    Task2.writeFile(filestring, "trajectories.txt")
+    Task2.writeFile(filestring, f"trajectories_{M}_{N}.txt")
 
 
 if __name__ == "__main__":
+    from time import perf_counter
+    start = perf_counter()
+
     # Read input parameters and file
     path, delta_t, N = readInputArguments(sys.argv)
     M, C, L, coords, vels = readFile(path)
 
     forces = Task2.calculateInitialForces(M, L, coords)
     VerletAlgorithm(coords, vels, forces, M, delta_t, N)
+    end = perf_counter()
+    print("execution time: ", end - start)
