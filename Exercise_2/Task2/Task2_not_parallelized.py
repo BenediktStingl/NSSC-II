@@ -22,25 +22,32 @@ def readInputArguments(argv):
 
 
 def BC_control(pos_list, L, M):
-    tmp_pos = []
-    if len(np.shape(pos_list)) > 1:
-        for p in pos_list:
-            for pos in p:
-                if pos > L:
-                    tmp_pos.append(pos%L)
-                elif pos < 0:
-                    tmp_pos.append((L-(pos%L)))
-                else:
-                    tmp_pos.append(pos)
-    else:
-        for p in pos_list:
-            if p > L:
-                tmp_pos.append(p%L)
-            elif p < 0:
-                tmp_pos.append(L-(p%L))
-            else:
-                tmp_pos.append(p)
-    return np.array(tmp_pos).reshape((M, 3))
+	"""
+	If a particle exits the box it enters on the other side.
+	It differentiates between coordinates given in a 1D array or 
+	coordinates for each particle in its own array entry.
+	"""
+	tmp_pos = []
+
+	if len(np.shape(pos_list)) > 1:
+		for p in pos_list:
+			for pos in p:
+				if pos > L:
+					tmp_pos.append(pos - L)
+				elif pos < 0:
+					tmp_pos.append(pos + L)
+				else:
+					tmp_pos.append(pos)
+	else:
+		for p in pos_list:
+			if p > L:
+				tmp_pos.append(p - L)
+			elif p < 0:
+				tmp_pos.append(p + L)
+			else:
+				tmp_pos.append(p)
+	return np.array(tmp_pos).reshape((M, 3))
+
 
 def generateInitialCoords(M, L, dims):
 	# create RNG with seed
@@ -55,34 +62,14 @@ def generateInitialCoords(M, L, dims):
 	return BC_control(result.x, L, M)
 
 
-def minimumImage(delta, L):
-    		return delta - L * np.round(delta / L)
-
-
 @jax.jit
 def Epot(coords, L):
-    E_pot = 0.0
-    coords = coords.flatten()
-    for i in range(0, coords.size-3, 3):
-        coords_i = coords[i:i+3]
-        coords_j = coords[i+3:]
-        diff = np.broadcast_to(coords_i, (np.shape(coords_j)[0]//3, 3)) - \
-              np.array(coords_j).reshape((np.shape(coords_j)[0]//3, 3))
-        diff = minimumImage(diff.flatten(), L)**2
-        #diff[1:] = minimumImage(diff[:], L)**2
-        #diff[2:] = minimumImage(diff[:], L)**2
-        diff = diff.reshape((np.shape(coords_j)[0]//3, 3))
-        r = np.sqrt(np.sum(diff, axis=1))
-                
-        E_pot += np.sum(4*( ( (2**(-1/6))/r )**12 - ( (2**(-1/6))/r )**6 ))
-    return E_pot
 
-"""
-@jax.jit
-def Epot(coords, L):
+	def minimumImage(delta, L):
+		return delta - L * np.round(delta / L)
 
 	E_pot = 0.0
-	coords = coords.flatten()	
+	coords = coords.flatten()
 	for i in range(0, coords.size-1, 3):
 		for j in range(i+3, coords.size, 3):
 			r = np.sqrt( minimumImage(coords[i]-coords[j], L)**2 +
@@ -91,7 +78,7 @@ def Epot(coords, L):
 			# Lennard-Jones
 			E_pot += 4*( ( (2**(-1/6))/r )**12 - ( (2**(-1/6))/r )**6 )
 	return E_pot
-"""
+
 
 def calculateInitialForces(M, L, coords):
 	gradient = jax.jit(jax.grad(Epot))
@@ -139,8 +126,6 @@ def writeFile(filestring, filename):
 
 
 if __name__ == "__main__":
-	from time import perf_counter
-	start = perf_counter()
 	### input variables ###
 	M, L, SIG = readInputArguments(sys.argv)
 	dims = 3
@@ -162,6 +147,3 @@ if __name__ == "__main__":
 	### write results into file ###
 	filestring = createFilestring(M, L, coords, vels, "Time step 0")
 	writeFile(filestring, "initial.txt")
-	end = perf_counter()
-	print("execution time: ", end - start)
-
