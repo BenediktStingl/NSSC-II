@@ -13,6 +13,22 @@ jax.config.update("jax_enable_x64", True)
 
 
 def readInputArguments(argv):
+    """
+    Reads input parameters from the command line.
+
+    Parameters
+    ----------
+    argv : str
+        Input parameter string containing the number of particles (M), the
+        side length of the box under consideration (L) and the standard 
+        deviation for the distribution of the initial velocities (SIG).
+
+    Returns
+    -------
+    int, float, float
+        Particle number, M, box side length, L, standard deviation, SIG.
+
+    """
 	if len(argv) == 4:
 		scipt, M, L, SIG = argv
 		return int(M), float(L), float(SIG)
@@ -22,8 +38,28 @@ def readInputArguments(argv):
 
 
 def BC_control(pos_list, L, M):
+    """
+    Applies Boundary Condisions, in case a particle leaves the box another one
+    enters the box. Differentiates between multidimensional and 1D arrays.
+
+    Parameters
+    ----------
+    pos_list : numy array 
+        array of particle positions, can be 1D or multidimansional containing
+        the xyz coordinates.
+    L : float
+        box side length.
+    M : int
+        Particle number.
+
+    Returns
+    -------
+    numpy array
+        Returns the corrected particle positions as a multidimensional array.
+
+    """
     tmp_pos = []
-    if len(np.shape(pos_list)) > 1:
+    if len(np.shape(pos_list)) > 1: #if a multidimensional array
         for p in pos_list:
             for pos in p:
                 if pos > L:
@@ -32,7 +68,7 @@ def BC_control(pos_list, L, M):
                     tmp_pos.append((L-(pos%L)))
                 else:
                     tmp_pos.append(pos)
-    else:
+    else: #if a 1D array
         for p in pos_list:
             if p > L:
                 tmp_pos.append(p%L)
@@ -43,8 +79,27 @@ def BC_control(pos_list, L, M):
     return np.array(tmp_pos).reshape((M, 3))
 
 def generateInitialCoords(M, L, dims):
-	# create RNG with seed
-	random.seed(42)
+    """
+    Generates the initial random positions.
+
+    Parameters
+    ----------
+    M : int
+        Particle number.
+    L : float
+        box side length.
+    dims : int
+        number of dimensions considered. Used to be equal to two for initial
+        testing.
+
+    Returns
+    -------
+    numpy array
+        initial random state.
+
+    """
+	# create RNG with seed for reproducable results for testing
+	#random.seed(42) 
 	# get random coordinates within the domain (floats)
 	coords = L*random.rand(M, dims)
 		
@@ -56,11 +111,44 @@ def generateInitialCoords(M, L, dims):
 
 
 def minimumImage(delta, L):
+    """
+    applies the minimum image convention.
+
+    Parameters
+    ----------
+    delta : float
+        difference in one coordinate between two particles. See lecture slide 
+        20.
+    L : float
+        box side length.
+
+    Returns
+    -------
+    float
+        corrected delta for minimum inmage convention.
+
+    """
     		return delta - L * np.round(delta / L)
 
 
 @jax.jit
 def Epot(coords, L):
+    """
+    Determines the potential for the particle cluster.
+
+    Parameters
+    ----------
+    coords : numpy array
+        Array of particle coordinates.
+    L : float
+        box side length.
+
+    Returns
+    -------
+    E_pot : float
+        potential energy of the particles under consideration.
+
+    """
     E_pot = 0.0
     coords = coords.flatten()
     for i in range(0, coords.size-3, 3):
@@ -69,31 +157,32 @@ def Epot(coords, L):
         diff = np.broadcast_to(coords_i, (np.shape(coords_j)[0]//3, 3)) - \
               np.array(coords_j).reshape((np.shape(coords_j)[0]//3, 3))
         diff = minimumImage(diff.flatten(), L)**2
-        #diff[1:] = minimumImage(diff[:], L)**2
-        #diff[2:] = minimumImage(diff[:], L)**2
         diff = diff.reshape((np.shape(coords_j)[0]//3, 3))
         r = np.sqrt(np.sum(diff, axis=1))
                 
         E_pot += np.sum(4*( ( (2**(-1/6))/r )**12 - ( (2**(-1/6))/r )**6 ))
     return E_pot
 
-"""
-@jax.jit
-def Epot(coords, L):
-
-	E_pot = 0.0
-	coords = coords.flatten()	
-	for i in range(0, coords.size-1, 3):
-		for j in range(i+3, coords.size, 3):
-			r = np.sqrt( minimumImage(coords[i]-coords[j], L)**2 +
-						 minimumImage(coords[i+1]-coords[j+1], L)**2 +
-					 	 minimumImage(coords[i+2]-coords[j+2], L)**2 )
-			# Lennard-Jones
-			E_pot += 4*( ( (2**(-1/6))/r )**12 - ( (2**(-1/6))/r )**6 )
-	return E_pot
-"""
 
 def calculateInitialForces(M, L, coords):
+    """
+    Determines the forces acting on each particle.
+
+    Parameters
+    ----------
+    M : int
+        Particle number.
+    L : float
+        box side length.
+    coords : numpy array
+        Array of particle coordinates.
+
+    Returns
+    -------
+    forces : numpy array
+        Forces acting on each particle in each component.
+
+    """
 	gradient = jax.jit(jax.grad(Epot))
 	forces = -gradient(coords.flatten(), L)
 
@@ -102,6 +191,26 @@ def calculateInitialForces(M, L, coords):
 
 
 def generateInitialVelocities(M, SIG, dims):
+    """
+    Generates the initial random velocities for all particles.
+
+    Parameters
+    ----------
+    
+    M : int
+        Particle number.
+    SIG : float
+        standard deviation.
+    dims : int
+        number of dimensions considered. Used to be equal to two for initial
+        testing.
+
+    Returns
+    -------
+    vels : numpy array
+        initial velocity for each particle in each component.
+
+    """
 	# create random velocities
 	SIG_mat = SIG * np.eye(dims)
 	mean = np.zeros(dims)
@@ -118,6 +227,29 @@ def generateInitialVelocities(M, SIG, dims):
 
 
 def createFilestring(M, L, coords, vels, comment):
+    """
+    Generates the filestring which is then written to a file in the format
+    requested in the tast description.
+
+    Parameters
+    ----------
+    M : int
+        Particle number.
+    L : float
+        box side length.
+    coords : numpy array
+        Array of particle coordinates.
+    vels : numpy array
+        initial velocity for each particle in each component.
+    comment : string
+        Any comment given.
+
+    Returns
+    -------
+    filestring : string
+        string which is then written to a file.
+
+    """
 	filestring = f"{M}\n{comment}\n{L}\n"
 
 	for k in range(0, coords.shape[0]):
@@ -129,6 +261,21 @@ def createFilestring(M, L, coords, vels, comment):
 
 
 def writeFile(filestring, filename):
+    """
+    Writes a given filestring to a file.
+
+    Parameters
+    ----------
+    filestring : string
+        string which is written to a file.
+    filename : string
+        name of the file (over)written.
+
+    Returns
+    -------
+    None.
+
+    """
 	# overwrites or creates a new file
 	f = open(filename, "w")
 	f.write(filestring)
@@ -139,8 +286,9 @@ def writeFile(filestring, filename):
 
 
 if __name__ == "__main__":
-	from time import perf_counter
+	from time import perf_counter #for time measurement
 	start = perf_counter()
+    
 	### input variables ###
 	M, L, SIG = readInputArguments(sys.argv)
 	dims = 3
@@ -162,6 +310,7 @@ if __name__ == "__main__":
 	### write results into file ###
 	filestring = createFilestring(M, L, coords, vels, "Time step 0")
 	writeFile(filestring, "initial.txt")
+    
 	end = perf_counter()
 	print("execution time: ", end - start)
 
