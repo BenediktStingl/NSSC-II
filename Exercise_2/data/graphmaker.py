@@ -13,12 +13,14 @@ def readFile(path):
         dense_list = []
         for line in csvreader:
             r, dense = line[0].split(":") #split all contained items
-            r_list.append(r)
-            dense_list.append(dense)
+            r_list.append(float(r))
+            dense_list.append(float(dense))
     return r_list, dense_list
 
-r, density = readFile("./densities.txt")
+r, density = readFile("./P30_L335_t001_N100/densities.txt")
 
 print(r, density)
-
+plt.xlabel("radius")
+plt.ylabel("densities")
 plt.plot(r, density)
+plt.grid()
